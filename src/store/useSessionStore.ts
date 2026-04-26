@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { TranscriptChunk, SuggestionBatch, ChatMessage, SessionSettings } from '@/types'
 import { DEFAULT_SETTINGS } from '@/lib/prompts'
 
+const GROQ_API_KEY_STORAGE_KEY = 'meeting-copilot:groq-api-key'
+
 interface SessionState {
   transcript: TranscriptChunk[]
   suggestionBatches: SuggestionBatch[]
@@ -19,6 +21,9 @@ interface SessionState {
   setIsLoadingSuggestions: (val: boolean) => void
   setIsLoadingChat: (val: boolean) => void
   updateSettings: (settings: Partial<SessionSettings>) => void
+  setGroqApiKey: (apiKey: string) => void
+  clearGroqApiKey: () => void
+  hydrateGroqApiKey: () => void
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -57,4 +62,51 @@ export const useSessionStore = create<SessionState>((set) => ({
 
   updateSettings: (partial) =>
     set((s) => ({ settings: { ...s.settings, ...partial } })),
+
+  setGroqApiKey: (apiKey) =>
+    set((s) => {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(GROQ_API_KEY_STORAGE_KEY, apiKey)
+      }
+
+      return {
+        settings: {
+          ...s.settings,
+          groqApiKey: apiKey,
+        },
+      }
+    }),
+
+  clearGroqApiKey: () =>
+    set((s) => {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(GROQ_API_KEY_STORAGE_KEY)
+      }
+
+      return {
+        settings: {
+          ...s.settings,
+          groqApiKey: '',
+        },
+      }
+    }),
+
+  hydrateGroqApiKey: () =>
+    set((s) => {
+      if (typeof window === 'undefined') {
+        return s
+      }
+
+      const storedApiKey = window.localStorage.getItem(GROQ_API_KEY_STORAGE_KEY) ?? ''
+      if (!storedApiKey) {
+        return s
+      }
+
+      return {
+        settings: {
+          ...s.settings,
+          groqApiKey: storedApiKey,
+        },
+      }
+    }),
 }))
